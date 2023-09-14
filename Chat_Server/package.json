@@ -4,7 +4,8 @@
   "description": "\"Media Server Responsible for Live Chat Notifications through websockets, elasticsearch, cassandra typescript\"",
   "main": "index.js",
   "scripts": {
-    "test": "mocha -r ts-node/register src/**/*.spec.ts"
+    "test": "mocha -r ts-node/register src/**/*.spec.ts",
+    "generate-types": "openapi-typescript openapi/spec.yml --output src/types/api.ts"
   },
   "repository": {
     "type": "git",

@@ -272,7 +272,6 @@ const createMessage = async (req: Request, res: Response, next: NextFunction) =>
         return result
     }
     catch (e) {
-
     }
 }
 
