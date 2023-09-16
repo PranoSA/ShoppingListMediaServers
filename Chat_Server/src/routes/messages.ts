@@ -12,7 +12,7 @@ CassandraTypes.TimeUuid.now()
 
 
 const cassandra_client = new CassandraClient(
-    { contactPoints: ['localhost'], localDataCenter: 'datacenter1', keyspace: 'shopping' }
+    { contactPoints: ['http://localhost:9121'], localDataCenter: 'datacenter1', keyspace: 'shopping' }
 );
 
 const Environment: string = process.env.ENVIRONMENT || "DEVELOPMENT"

@@ -56,3 +56,7 @@ Used To Store Information About Groups, their Users, and Messages About Groups
 
 
 
+https://swagger.io/docs/specification/describing-responses/
+https://www.npmjs.com/package/openapi-typescript
+https://www.npmjs.com/package/express-openapi-validator
+https://hackernoon.com/setting-up-kafka-on-docker-for-local-development
