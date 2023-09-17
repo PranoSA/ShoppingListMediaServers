@@ -6,20 +6,19 @@ curl -X PUT -k "https://localhost:9200/$1?pretty" -H 'Content-Type: application/
 {
   "mappings": {
     "properties": {
-      "chat_id" : {
+      "groupid" : {
         "type" : "keyword",
         "doc_values" : "false"
       },
-      "message_id" : {
-         "type": "unsigned_long"
+      "messageid" : {
+         "type": "keyword"
       },
-      "sender" : {
+      "author" : {
         "type" : "keyword",
         "index" : "false"
       },
-      "sent": {
-        "type":   "date",
-        "format": "yyyy-MM-dd"
+      "created_at": {
+        "type":   "date"
       },
       "content": {
         "type" : "text"

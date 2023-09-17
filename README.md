@@ -1,5 +1,6 @@
 # ShoppingListMediaServers
-
+ SELECT column_name,kind FROM system_schema.columns   WHERE keyspace_name='shopping'   AND table_name='me
+ssages';
 
 
 # Schema Setup

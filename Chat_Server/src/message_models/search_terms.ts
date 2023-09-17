@@ -52,7 +52,7 @@ const searchMessageWithoutTerms = async (groupid:String,start_time: Number, limi
         const newMessage = {
             groupid : i.groupid,
             messageid: i.messageid,
-            sendor: i.sendor,
+            sendor: i.author,
             content: i.content,
             sent_at: i.created_at,
         }
@@ -66,7 +66,7 @@ const searchMessageWithoutTerms = async (groupid:String,start_time: Number, limi
 const searchMessageWithTerms = async (terms : String[], groupid:String,start_time: Number=Date.now(), limit: Number =25, down:Boolean =false ):Promise<components["schemas"]["Message"][]> => {
 
 
-    try {
+
         const matchClause = terms.map((term) => ({
             match: {
                 content: term
@@ -111,22 +111,17 @@ const searchMessageWithTerms = async (terms : String[], groupid:String,start_tim
         });
 
         const hits = response.body.hits.hits;
-        console.log('Search results:', hits);
 
         return response.body.hits.map((v:any,i:any ):components["schemas"]["Message"] => {
             return {
                 messageid: v.messageid,
                 groupid: v.groupid,  //This Should Be a String...
-                sendor: v.sendor,
+                sendor: v.author,
                 content: v.content, 
                 sent_at: v.created_at,
             }
         })
-    }
-    catch (e) {
-        console.log(e)
-    }
-    return []
+    
 }
 
 export {

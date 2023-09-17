@@ -1,3 +1,6 @@
+docker run --rm -d --name cassandra --hostname cassandra -p 9042:9042 cassandra
+cqlsh at ~/cqlsh-astra
+
 CREATE KEYSPACE shopping
 # Single Node Setup
 
@@ -19,7 +22,12 @@ CREATE TYPE User (
 CREATE TABLE Messages(
             groupid uuid,
             messageid timeuuid,
-            sendor text,
+            author text,
             content text,
-            sent_at timestamp,
+            created_at timestamp,
             PRIMARY KEY((groupid), messageid));
+
+
+INSERT INTO Shopping.Messages (groupid, messageid, sendor, content, sent_at)
+VALUES ('ab26b3d0-f1f8-49ca-85ea-46180f8679da', 'ab26b3d0-f1f8-49ca-85ea-46180f8679da', 'pcadler@gmail.com','We Love To Swim In The Sea, That's Why I am ordering Lays Potato Chips for our picnic on the beach. I would say that it is a very fun experience to have sand in your feet, lay on a towel, and eat soggy sandwiches and a few beers. I saylets get some pale ales, something like Sierra Nevada, which is a nice but budget higher alcohol by volume abv beer that we could all enjoy', '2017-05-05 00:00:00.000+0000')
+USING TTL 86400 AND TIMESTAMP 123456789;
