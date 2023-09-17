@@ -2,15 +2,42 @@ import express, { Request, Response, NextFunction } from 'express';
 import { Kafka, KafkaConfig } from 'kafkajs';
 import { InitGroupsKafka } from './kafka_consumer'
 //import { apiDocumentation } from './o';
+import {types as CassandraTypes}  from 'cassandra-driver'
+import * as Cassandra from 'cassandra-driver'
+import insertMessage from './message_models/insert_message'
+import {components} from './types/api'
+import {searchMessageWithoutTerms, searchMessageWithTerms} from './message_models/search_terms'
+
+import {DefaultMessageModeler} from "./message_models/message_models"
+import MessageRoutes from './routes/message_routes'
+
 
 import * as swaggerUi from 'swagger-ui-express'
 import Yaml from 'yaml'
 import * as fs from 'fs'
 
-const file = fs.readFileSync(__dirname + "/openapi/spec.yml", 'utf8')
+
+const router : MessageRoutes = new MessageRoutes(new DefaultMessageModeler())
+
+//const file = fs.readFileSync(__dirname + "/openapi/spec.yml", 'utf8')
+const file = fs.readFileSync("./openapi/spec.yml", "utf8")
 const swaggerDoc = Yaml.parse(file)
 
+const create_time = CassandraTypes.TimeUuid.now()
 
+const newestMessage :components["schemas"]["MessageRequest"]  = {
+    groupid: "ab26b3d0-f1f8-49ca-85ea-46180f8679da",
+    content: "I like to eat apples at the beach while sipping beer, lets buy some drinks and some fluids to replinish",
+    sent_at : Date.now().toString(),
+}
+
+let testGroupId = "ab26b3d0-f1f8-49ca-85ea-46180f8679da"
+
+insertMessage(newestMessage, testGroupId, "pcadler")
+
+//searchMessageWithoutTerms(testGroupId)
+
+searchMessageWithTerms(["beach", "beer"], testGroupId)
 
 const app = express();
 const port = 3000;
@@ -37,7 +64,6 @@ app.listen(port, () =>
 });
 
 import { skimMessagesUp, getUnreadMessages, searchMessages } from "./routes/messages"
-
 
 app.use("/messages/:chatid", skimMessagesUp)
 

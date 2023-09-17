@@ -10,7 +10,7 @@ paths:
           name: groupid
           required: true
           schema:
-            type: integer
+            type: string 
         - in: query
           name: limit
           required: false
@@ -25,7 +25,7 @@ paths:
             type: boolean
             default: false
         - in: query
-          name: timestamp
+          name: start
           required: false
           schema:
             type: integer
@@ -53,7 +53,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
+                $ref: "#/components/schemas/MessageRequest"
   /searched/messages/{groupid}:
     get:
       parameters:
@@ -76,11 +76,26 @@ components:
     Message:
       type: object
       properties:
-        id:
+        messageid:
           type: integer
         groupid:
-          type: integer
+          type: string
         sendor:
+          type: string
+        content:
+          type: string
+        sent_at:
+          type: string
+      required:
+        - id
+        - groupid
+        - sendor
+        - content
+        - sent_at
+    MessageRequest:
+      type: object
+      properties:
+        groupid:
           type: string
         content:
           type: string
