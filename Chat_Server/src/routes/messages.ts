@@ -101,7 +101,6 @@ const skimMessagesUp = (req: Request, res: Response, next: NextFunction) =>
         .then(result =>
         {
             res.json(result.rows)
-            console.log('User with email %s', result.rows[0].email)
         })
         .catch(err =>
         {

@@ -4,8 +4,6 @@ import { types as CassandraTypes } from 'cassandra-driver'
 
 import {components} from '../types/api'
 
-let testGroupId = "ab26b3d0-f1f8-49ca-85ea-46180f8679da"
-
 
 
 const insertMessage = async (message : components["schemas"]["MessageRequest"], groupid:string,sender:string) :Promise<components["schemas"]["Message"]>=> {
@@ -16,9 +14,8 @@ const insertMessage = async (message : components["schemas"]["MessageRequest"], 
 
 
         const query: string = `
-        INSERT INTO Shopping.messages(groupid, messageid, sendor, content, sent_at)
+        INSERT INTO Shopping.messages(groupid, messageid, author, content, created_at)
         VALUES(?,?,?,?,?)
-        RETURNING messageid
         `  
 
         const res = await cassandra_client.execute(query, [groupid, create_time, sender, message.content,created_at],)
@@ -27,26 +24,26 @@ const insertMessage = async (message : components["schemas"]["MessageRequest"], 
             index: "shoppinglist_chats",
             document: {
                 chat_id: groupid,
-                sendor: sender,
+                author : sender,
                 content: message.content,
                 message_id: create_time,
                 sent:  create_time.getDate(),//Date.now(),
             }
-        })
+        })  
+
+        create_time.getDate().getTime()
         
         const response : components["schemas"]["Message"] = {
-            messageid: res.rows[0].messageid,
+            messageid: create_time.getDate().getTime(), //create_time,//res.rows[0].messageid,
             groupid: groupid,
-            sendor : sender, 
+            author : sender, 
             content: message.content, 
             sent_at: create_time.getDate().toISOString()
 
         }
 
         return response 
-
-       // return res
-
+        
 }
 
 

@@ -16,6 +16,8 @@ import * as swaggerUi from 'swagger-ui-express'
 import Yaml from 'yaml'
 import * as fs from 'fs'
 
+import * as jose from 'jose'
+
 
 const router : MessageRoutes = new MessageRoutes(new DefaultMessageModeler())
 
@@ -33,11 +35,15 @@ const newestMessage :components["schemas"]["MessageRequest"]  = {
 
 let testGroupId = "ab26b3d0-f1f8-49ca-85ea-46180f8679da"
 
-insertMessage(newestMessage, testGroupId, "pcadler")
+
+const JWKS = jose.createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
+
+
+//insertMessage(newestMessage, testGroupId, "pcadler")
 
 //searchMessageWithoutTerms(testGroupId)
 
-searchMessageWithTerms(["beach", "beer"], testGroupId)
+//searchMessageWithTerms(["beach", "beer"], testGroupId)
 
 const app = express();
 const port = 3000;
@@ -57,6 +63,9 @@ app.use(express.json())
 
 //InitGroupsKafka()
 
+app.get("/messages/:chatid", router.SearchMessage)
+
+app.post("/messages/:chatid", router.GenMessage)
 
 app.listen(port, () =>
 {

@@ -1,2 +1,4 @@
 dist
 node_modules
+cassandra_data
+launch.json
