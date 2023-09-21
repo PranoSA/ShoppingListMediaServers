@@ -284,7 +284,7 @@ const searchMessageWithTermsWeighted = async (terms : String[], groupid:String,s
                 },
                 script_score : {
                     script : {
-                        source : `Math.exp(0-${multiplier}*Math.abs(params.now-doc['sent'].value.millis/1000)/(${time_annum}+1))`,
+                        source : `Math.exp(0-${multiplier}*Math.abs(params.now-doc['sent'].value.millis)/(${time_annum}+1)/1000)`,
                         params: {
                             now: start_time
                         }
@@ -305,6 +305,7 @@ const searchMessageWithTermsWeighted = async (terms : String[], groupid:String,s
             author : v._source.author,
             content: v._source.content, 
             sent_at: v._source.sent,
+            score: v._score
         }
     })
 

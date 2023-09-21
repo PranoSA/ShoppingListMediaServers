@@ -13,5 +13,7 @@ const cassandra_client = new CassandraClient(
     { contactPoints: Config[Environment]["Cassandra_Host"], localDataCenter: 'datacenter1', keyspace: 'shopping' }
 );
 
+console.log(cassandra_client)
+
 export default cassandra_client
 

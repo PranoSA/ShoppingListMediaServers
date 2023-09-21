@@ -20,9 +20,8 @@ class MessageRoutes  {
 
         let body : components["schemas"]["MessageRequest"] = req.body 
 
-        body.sent_at = Date.now().toString()
 
-        if (body.groupid == undefined || body.content == undefined || body.sent_at == undefined){
+        if ( body.content == undefined == undefined){
 
         }
 
@@ -63,6 +62,7 @@ class MessageRoutes  {
 
         const ordered: Boolean = (req.query.ordered as string || "true") == "true" ? false:true  
 
+        try{
         if(ordered){
             let annum : Number = parseInt(req.query.annum as string)
             if (Number.isNaN(annum)){
@@ -80,7 +80,6 @@ class MessageRoutes  {
            return  res.json(response)
         }
 
-        try {
         if (op ){
           const  response = await this.models.searchMessageWithTerms(terms, chatid, cursor, limit, beflow)
           return res.json(response)
@@ -92,6 +91,7 @@ class MessageRoutes  {
         }
     }
         catch(e){
+            console.log(e)
             return res.json({code: "error"})
         }
     }

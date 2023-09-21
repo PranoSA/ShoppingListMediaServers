@@ -18,7 +18,7 @@ export interface paths {
           below?: boolean;
           /** @description By Default, Term Search Or Joined on an AND query Set To False, To Search on an OR query */
           and?: boolean;
-          /** @description UNIX 64 TIMESTAMP for the cursor search base, this application Does Not Support Wide Range Pagination To Get This Value from a message you want to inspect */
+          /** @description UNIX 64 TIMESTAMP for the cursor search base, this application Does Not Support Wide Range Pagination \n To Get This Value from a message you want to inspect */
           start?: number;
           /** @description Return "Best" Results By Default, Search Results Will Be Ordered By Date, Rather Than Score  However, if you wish to Use Time Priority Date (Search Closest To In Time) The Cursor will be used as the weighing factor for results  This is not good for scanning a wide range of messages */
           ordered?: boolean;
@@ -26,7 +26,7 @@ export interface paths {
           annum?: number;
         };
         path: {
-          /** @description Group ID / Chat ID The Message Belongs To,  All Searches Must Be Inside of a Group You Are Authorized To Access */
+          /** @description Group ID / Chat ID The Message Belongs To,  All Searches Must Be Inside of a Group You Are Authorized To Access Test: ab26b3d0-f1f8-49ca-85ea-46180f8679da */
           groupid: string;
         };
       };
@@ -42,14 +42,19 @@ export interface paths {
     post: {
       parameters: {
         path: {
-          groupid: number;
+          groupid: string;
+        };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["MessageRequest"];
         };
       };
       responses: {
         /** @description Fetching Sequential Messages In Group Chat */
         200: {
           content: {
-            "application/json": components["schemas"]["MessageRequest"];
+            "application/json": components["schemas"]["Message"];
           };
         };
       };
@@ -84,11 +89,10 @@ export interface components {
       author: string;
       content: string;
       sent_at: string;
+      score?: number;
     };
     MessageRequest: {
-      groupid: string;
       content: string;
-      sent_at: string;
     };
   };
   responses: never;

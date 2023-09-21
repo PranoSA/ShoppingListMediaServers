@@ -28,9 +28,7 @@ const swaggerDoc = Yaml.parse(file)
 const create_time = CassandraTypes.TimeUuid.now()
 
 const newestMessage :components["schemas"]["MessageRequest"]  = {
-    groupid: "ab26b3d0-f1f8-49ca-85ea-46180f8679da",
     content: "I like to eat apples at the beach while sipping beer, lets buy some drinks and some fluids to replinish",
-    sent_at : Date.now().toString(),
 }
 
 let testGroupId = "ab26b3d0-f1f8-49ca-85ea-46180f8679da"
