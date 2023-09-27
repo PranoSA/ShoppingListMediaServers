@@ -1,0 +1,5 @@
+node_modules
+ssl
+app
+client.js
+tsconfig.json
