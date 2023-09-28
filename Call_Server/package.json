@@ -11,9 +11,13 @@
   "license": "ISC",
   "dependencies": {
     "@httptoolkit/httpolyglot": "^2.1.1",
+    "@types/node-jose": "^1.1.11",
+    "@types/redis": "^4.0.11",
     "express": "^4.18.2",
     "httpolyglot": "^0.1.2",
+    "jose": "^4.14.6",
     "mediasoup": "^3.12.13",
+    "redis": "^4.6.10",
     "socket.io": "^4.7.2"
   },
   "type": "module",

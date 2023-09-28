@@ -3,6 +3,16 @@
 import express, {Request, Response, NextFunction} from 'express'
 const app = express()
 
+import { createClient } from 'redis';
+
+const client = await createClient({
+  url: "localhost:6379",
+  password : process.env.REDIS_PASSWORD,
+  username : process.env.REDIS_USERNAME,
+})
+  .on('error', err => console.log('Redis Client Error', err))
+  .connect();
+
 import https from 'httpolyglot'
 import fs from 'fs'
 import path from 'path'
@@ -12,6 +22,11 @@ import { Server, Socket } from 'socket.io'
 import mediasoup from 'mediasoup'
 import { types as mediasoupTypes } from "mediasoup";
 
+import { RtpParameters, } from 'mediasoup/node/lib/RtpParameters'
+import { AppData, DtlsParameters } from 'mediasoup/node/lib/types'
+import { IceParameters } from 'mediasoup/node/lib/types';
+import { IceCandidate } from 'mediasoup/node/lib/types';
+import { MediaKind } from 'mediasoup/node/lib/RtpParameters';
 
 
 
@@ -24,7 +39,7 @@ type joinRoom = {
 }
 
 type transportconnect = {
-  dtlsParameters: any 
+  dtlsParameters: DtlsParameters
 }
 
 
@@ -35,6 +50,15 @@ type createWebRtcClient = {
 
 type createWebRtcCallbackArgument = {
   params:any 
+}
+
+type createWebRtcCallbackArguments = {
+  params : {
+      id: string
+      iceParameters: IceParameters
+      iceCandidates: IceCandidate[]
+      dtlsParameters: DtlsParameters 
+  }
 }
 
 
@@ -52,7 +76,7 @@ interface ServerToClientEvents {
       3. Producer Closed -> Get the Consumer Transport To CLose 
   */
   connectionsuccess: (a:ConnectionSuccess) => void; 
-  newproducer:(a:any, calllback:(e:any)=>void)=>void; 
+  newproducer:(a:{producerId:string})=>void; 
   producerclosed:any 
 }
 
@@ -100,9 +124,9 @@ interface ClientToServerEvents {
 
   */
   joinRoom: (a:joinRoom, callback:(e:any) => void) => void;
-  createWebRtcTransport:(a:createWebRtcClient, callback:(e:createWebRtcCallbackArgument) => void)=>void;
+  createWebRtcTransport:(a:createWebRtcClient, callback:(e:createWebRtcCallbackArguments) => void)=>void;
   transportconnect:(a:transportconnect) => void; 
-  transportproduce:(a:any, b:any) => void;
+  transportproduce:(a:TransportProduceParams, callback:(e:any) => void) => void;
   transportrecvconnect:(a:any) => void;
   consume:(a:any, callback:(e:any)=>void ) => void;
   consumerresume:(a:any)=>void;
@@ -230,7 +254,7 @@ interface CandidateConsumers {
 }
 
 
-let sockets :Sockets = {}
+let sockets :Sockets = {} //Do Not Think I Need This 
 
 let candidate_transports:CandidateProducerTransports= {};
 
@@ -243,6 +267,15 @@ let consumer_transports:CandidateConsumerTransports= {};
 
 
 const ListenIP = process.env.IP || "127.0.0.1";
+
+type TransportProduceParams = {
+  kind: MediaKind,
+  rtpParameters: RtpParameters,
+  appData: AppData,
+}
+
+
+
 
 /*const mediaCodecs:mediasoupTypes.RtpCodecCapability[] =
 [
@@ -421,6 +454,8 @@ const createWorker = async () => {
 
     clients[socket.id].Room_name = roomName;
 
+    socket.join(roomName);
+
 
 
     // get Router RTP Capabilities
@@ -455,12 +490,13 @@ const createWorker = async () => {
       transport => {
         callback({
           params: {
-            id: transport.id,
-            iceParameters: transport.iceParameters,
-            iceCandidates: transport.iceCandidates,
-            dtlsParameters: transport.dtlsParameters,
+            id: transport.id, //string 
+            iceParameters: transport.iceParameters, //iceParameters
+            iceCandidates: transport.iceCandidates,  //IceCandidates[]
+            dtlsParameters: transport.dtlsParameters, //dtlsParameters
           }
         })
+
 
         // add transport to Peer's properties
         //Where is createWebRTCTransport called?????
@@ -483,6 +519,10 @@ const createWorker = async () => {
 
         }
         else{
+
+           if(produce_transports[socket.id]){
+            produce_transports[socket.id].transport.close();
+           }
             // -> Add Candidate Transport For now --> Why Do We Need Transport Room 
             produce_transports[socket.id] = {
               transport,
@@ -546,7 +586,9 @@ const createWorker = async () => {
 
     room.clients[socket.id].producers = [... room.clients[socket.id].producers , producer]
 
-    notifyRoom(clients[socket.id].Room_name, socket.id, producer.id);
+    //notifyRoom(clients[socket.id].Room_name, socket.id, producer.id);
+
+    socket.to(Array.from(socket.rooms)).emit("newproducer", {producerId: producer.id});
 
     producer.on('transportclose', () => {
       console.log('transport for this producer closed ')
@@ -734,6 +776,8 @@ const notifyRoom = (roomName:string, socketId:string, producerId:string ) => {
   //Already DOne???
   //rooms[roomName].clients[socketId].producers = [...rooms[roomName].clients[socketId].producers, produce]
   const room:Room = rooms[roomName];
+
+
 
   for (var clientid in room.clients){
     if (clientid == socketId){
