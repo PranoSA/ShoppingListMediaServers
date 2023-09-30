@@ -3,54 +3,80 @@ import { IceParameters, IceCandidate, DtlsParameters, RtpParameters, MediaKind, 
 
 interface ClientToServerEvents {
 
-    /*
-        1. Join Room -> 
-  
-        2. Create WebRTC Transport (Do This once for Producer When Load Page), 
-        and one for every "newproducer" event
-  
-        3. Transport Produce ->
-        After Calling createWebRTCTransport on page load if you are a producer, 
-        Then Generating a WebRTC Producer Transport on The Client,
-        Call transport produce to send over parameters for RTP
-  
-        Then a producer ID will be generated on the server that identifies the Producer ID transport in the room,
-        Servers Will Then Use this to connect to 
-  
-        4. Transport Recv Connect -> 
-        
-        For each producer, a consumer transport is created, which is identified by the consumer ID and a corresponding producer ID
-  
-  
-        This is called for all of the producers upon load and new signalled producers
-        
-  
-  
-        5. Consume ->
-  
-        Create Consumer Based on RTP Capabilities and producer and consumer id 
-        for mapping
-  
-  
-        6. consumerresume -> 
-  
-  
-  
-  
-        7. Get Producers -> 
-  
-        Upon Joining A Room, Get all the Producers Currently In The Room 
-  
-    */
+
+    /**
+     *  
+            After Connecting to Our Websocket Server, The entrypoint to our application utilities (making a group audio or video call),
+            is by joining a room.
+
+            In this application, the Room corresponds to a group, which has certain userids in it, and we must authenticates users
+            into groups.
+
+            The WebRTC / SFU functionality related to a successful call to join a room is by either creating a new router if the room is currently empty 
+            (doesn't exist in memory), or if it does, by simply joining a room by adding the client to the dictionary that tells room belonging.
+
+            In Response, you get a list of supported codec and headers for the WebRTC session between the user and the server, this replaces the need
+            for SDP with hard-coded values on the server.
+
+            The logic behind this is effeciency and the fact that the supported codecs will be hard-coded on one end for all WebRTC sessions with SFU.
+
+     */
+
     joinRoom: (a:joinRoom, callback:(e:any) => void) => void;
+
+    
+    /*
+            Upon Joining a Room, A Client Will Find Out About THe Given Producers In The Room 
+    */
+
     createWebRtcTransport:(a:createWebRtcClient, callback:(e:createWebRtcCallbackArguments) => void)=>void;
+
+    /**
+     *  The Next Step is to create request to create a WebRTCTransport, at this point its not technically 
+     *  assigned to be either a consumer or producer transport, but an argument to specify is given to 
+     * 
+     *  But A Parameter to specify whether the transport intends to be a consumer or client is passed as the arguments,
+        and for book keeping measures producer and consumer transports are stored in a seperate dictionaries in memory 
+
+        In response, ICe Candidates (Such as Anounced Ips), Preferential Transport Protocol, and DTLS parameters 
+        are passed back to the client. 
+     */
+
     transportconnect:(a:transportconnect) => void; 
+
+
+                        /*========+
+                        |PRODUCERS|
+                        +========*/
+    /**
+     * Transport Connect Event is to Start A DTLS Session with the Server
+
+        Begin Connection to the Transport, Which Will Now Be a DTLS Session, Actually Producing is the next step
+
+        The User Will Try To Create A Send  Device That Will Connnect To The Server, and upon "connect" the server will 
+        connect back with the same DTLS parameters, Upon Producing the traffic will be encrypted
+
+        The Client will first call produce on a device, and then for each kind of media use the "produce transport"
+        to create new producers of either type audio or video
+
+        The Callback indicates the producer ID back to the client which is needed to produce (callback to start producing)
+        and whether there's other members in the room (so you can start requesting media from them)
+
+     */
+
     transportproduce:(a:TransportProduceParams, callback:(e:TransportProduceCallbackParams) => void) => void;
+
+    /*
+
+    */
+
+
     transportrecvconnect:(a:any) => void;
     consume:(a:any, callback:(e:any)=>void ) => void;
     consumerresume:(a:ConsumeResumeParams)=>void;
     getProducers:(a:any, callback:(e:ProducerResponse[]) => void) => void;
   }   
+
 
 
   type ConsumeResumeParams = {
@@ -117,5 +143,5 @@ interface ClientToServerEvents {
   
 
   export {
-    joinRoom, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents
+    joinRoom, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents, ProducerResponse
   }

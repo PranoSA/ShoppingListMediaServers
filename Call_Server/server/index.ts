@@ -17,20 +17,14 @@ import mediasoup from 'mediasoup'
 
 import {  RtpParameters, AppData, DtlsParameters, IceParameters,MediaKind, IceCandidate, Producer, Consumer, Worker, Router } from 'mediasoup/node/lib/types'
 
-import { joinRoom, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents} from './types/client_to_server_events';
+import { joinRoom, ProducerResponse, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents} from './types/client_to_server_events';
 
-import {ServerToClientEvents} from './types/server_to_client_events';
+import {ServerToClientEvents, ConnectionSuccess} from './types/server_to_client_events';
 
-import { ConnectionSuccess } from './types/server_events';
-import VerifyToken from './auth/verify_token';
+import { HighLevelClient, HighLevelClients, LowerLevelClient, Room, Clients, Rooms, Sockets, CandidateTransport, CandidateTransports } from './types/application_types';
+
+
 import newUser from './globals/new_user';
-
-type ProducerResponse = {
-  producerId : string
-  userid : string 
-  username : string 
-  email : string 
-}
 
 
 
@@ -69,78 +63,10 @@ let worker: Worker;
 
 
 
-//Mapped By Client ID
-type HighLevelClient = {
-  Room_name : string //Can Be Used To Map To Room
-  UUID : string 
-  Username: string 
-  Email : string,
-  Consumer_Transport_Ids : string[],
-  Producer_Transport_Ids : string[],
-}
-
-//Index By Room Name -> UUID Of Group Probably
-type Room = {
-  router : Router,
-  clients : Clients,
-}
-
-interface Clients {
- [key:string]:LowerLevelClient,
-}
-
-
-//Again Mapped By Client ID
-type LowerLevelClient = {
-  producers : Producer[];
-  consumers : Consumer[];
-  socket : Socket,
-  userid : string,
-  username : string,
-}
-
-type Rooms = {
-  [key:string]:Room
-}
-
-type HighLevelClients = {
-  [key:string]:HighLevelClient
-}
-
-type CandidateTransport = {
-  transport:mediasoup.types.WebRtcTransport
-  owner : string 
-  username : string
-  email : string 
-  socket_id:string
-}
-
-type CandidateTransports = {
-  [key:string]:CandidateTransport
-}
-
-type CandidateProducerTransports = {
-  [key:string]:CandidateTransport 
-}
-
-type CandidateConsumerTransports = {
-  [key:string]:CandidateTransport[]
-}
 
 let clients:HighLevelClients = {}
 let rooms:Rooms = {}          // { roomName1: { Router, rooms: [ sicketId1, ... ] }, ...}
 
-interface Sockets {
-  [key:string]:Socket
-}
-
-interface Producers {
-  [key:string]:mediasoup.types.Producer
-}
-
-interface CandidateConsumers {
-  [key:string]:mediasoup.types.Consumer
-}
 
 
 let sockets :Sockets = {} //Do Not Think I Need This 
@@ -655,44 +581,6 @@ const createWorker = async () => {
 
   
 })
-
-
-/**
-   * Informs About Producers In The Room 
-
- * @param roomName 
- * @param socketId 
- * @param producerId 
- */
-const notifyRoom = (roomName:string, socketId:string, producerId:string ) => {
-
-  console.log(`${producerId} just joined ${roomName} as ${socketId}`)
-
-  //You Are Telling All The Clients In THe Room, That There is a New Producer
-
-
-  //Already DOne???
-  //rooms[roomName].clients[socketId].producers = [...rooms[roomName].clients[socketId].producers, produce]
-  const room:Room = rooms[roomName];
-
-
-
-  for (var clientid in room.clients){
-    if (clientid == socketId){
-      continue;
-    }
-
-    const iterClient = room.clients[clientid]
-    const iterSocket = iterClient.socket 
-
-    iterSocket.emit("newproducer", {producerId})
-  
-  }
-  
-}
-
-
-
 
 
 const createWebRtcTransport = async (router:mediasoup.types.Router):Promise<mediasoup.types.WebRtcTransport> => {
