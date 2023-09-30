@@ -3,136 +3,34 @@
 import express, {Request, Response, NextFunction} from 'express'
 const app = express()
 
-import { createClient } from 'redis';
+import mediaCodecs from './globals/media_codecs';
 
-const client = await createClient({
-  url: "localhost:6379",
-  password : process.env.REDIS_PASSWORD,
-  username : process.env.REDIS_USERNAME,
-})
-  .on('error', err => console.log('Redis Client Error', err))
-  .connect();
 
 import https from 'httpolyglot'
 import fs from 'fs'
 import path from 'path'
-const __dirname = path.resolve()
 
 import { Server, Socket } from 'socket.io'
 import mediasoup from 'mediasoup'
-import { types as mediasoupTypes } from "mediasoup";
-
-import { RtpParameters, } from 'mediasoup/node/lib/RtpParameters'
-import { AppData, DtlsParameters } from 'mediasoup/node/lib/types'
-import { IceParameters } from 'mediasoup/node/lib/types';
-import { IceCandidate } from 'mediasoup/node/lib/types';
-import { MediaKind } from 'mediasoup/node/lib/RtpParameters';
+//import { types as mediasoupTypes } from "mediasoup";
 
 
+import {  RtpParameters, AppData, DtlsParameters, IceParameters,MediaKind, IceCandidate, Producer, Consumer, Worker, Router } from 'mediasoup/node/lib/types'
 
-type ConnectionSuccess = {
-    socketId : string
+import { joinRoom, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents} from './types/client_to_server_events';
+
+import {ServerToClientEvents} from './types/server_to_client_events';
+
+import { ConnectionSuccess } from './types/server_events';
+import VerifyToken from './auth/verify_token';
+import newUser from './globals/new_user';
+
+type ProducerResponse = {
+  producerId : string
+  userid : string 
+  username : string 
+  email : string 
 }
-
-type joinRoom = {
-    roomName : string 
-}
-
-type transportconnect = {
-  dtlsParameters: DtlsParameters
-}
-
-
-
-type createWebRtcClient = {
-  consumer: boolean 
-}
-
-type createWebRtcCallbackArgument = {
-  params:any 
-}
-
-type createWebRtcCallbackArguments = {
-  params : {
-      id: string
-      iceParameters: IceParameters
-      iceCandidates: IceCandidate[]
-      dtlsParameters: DtlsParameters 
-  }
-}
-
-
-export type WebRTCUser = {
-id: string;
-stream: MediaStream;
-};
-
-interface ServerToClientEvents {
-  /*
-      1. Connected To the Server Successfully 
-
-      2. New Producer -> Start Signaling For New Conusmer Tranport TO Build One
-
-      3. Producer Closed -> Get the Consumer Transport To CLose 
-  */
-  connectionsuccess: (a:ConnectionSuccess) => void; 
-  newproducer:(a:{producerId:string})=>void; 
-  producerclosed:any 
-}
-
-
-
-interface ClientToServerEvents {
-
-  /*
-      1. Join Room -> 
-
-      2. Create WebRTC Transport (Do This once for Producer When Load Page), 
-      and one for every "newproducer" event
-
-      3. Transport Produce ->
-      After Calling createWebRTCTransport on page load if you are a producer, 
-      Then Generating a WebRTC Producer Transport on The Client,
-      Call transport produce to send over parameters for RTP
-
-      Then a producer ID will be generated on the server that identifies the Producer ID transport in the room,
-      Servers Will Then Use this to connect to 
-
-      4. Transport Recv Connect -> 
-      
-      For each producer, a consumer transport is created, which is identified by the consumer ID and a corresponding producer ID
-
-
-      This is called for all of the producers upon load and new signalled producers
-      
-
-
-      5. Consume ->
-
-      Create Consumer Based on RTP Capabilities and producer and consumer id 
-      for mapping
-
-
-      6. consumerresume -> 
-
-
-
-
-      7. Get Producers -> 
-
-      Upon Joining A Room, Get all the Producers Currently In The Room 
-
-  */
-  joinRoom: (a:joinRoom, callback:(e:any) => void) => void;
-  createWebRtcTransport:(a:createWebRtcClient, callback:(e:createWebRtcCallbackArguments) => void)=>void;
-  transportconnect:(a:transportconnect) => void; 
-  transportproduce:(a:TransportProduceParams, callback:(e:any) => void) => void;
-  transportrecvconnect:(a:any) => void;
-  consume:(a:any, callback:(e:any)=>void ) => void;
-  consumerresume:(a:any)=>void;
-  getProducers:any
-}   
-
 
 
 
@@ -167,28 +65,7 @@ const io:Server< ClientToServerEvents, ServerToClientEvents> = new Server(httpsS
 
 const connections = io.of('/sfu')
 
-let worker: mediasoupTypes.Worker;
-let rtpParameters: mediasoupTypes.RtpParameters;
-
-
-
-//Access By Room Name (Will Be UUID In This Case)....
-/*type Room = {
-    router : mediasoupTypes.Router
-    client_socket_ids : string[],
-}*/
-
-/**
- * 
-    Room -> Clients -> produce_transports
-    Client -> Room ->Clients -> produce_transports (Can This Graph Work)
-
- */
-
-//Should I Map By Transport Id
-//This Is Used to Append To 
-
-//Why Do I Need Seperate For Producers and Consumers ??
+let worker: Worker;
 
 
 
@@ -196,11 +73,15 @@ let rtpParameters: mediasoupTypes.RtpParameters;
 type HighLevelClient = {
   Room_name : string //Can Be Used To Map To Room
   UUID : string 
+  Username: string 
+  Email : string,
+  Consumer_Transport_Ids : string[],
+  Producer_Transport_Ids : string[],
 }
 
 //Index By Room Name -> UUID Of Group Probably
 type Room = {
-  router : mediasoupTypes.Router,
+  router : Router,
   clients : Clients,
 }
 
@@ -211,9 +92,11 @@ interface Clients {
 
 //Again Mapped By Client ID
 type LowerLevelClient = {
-  producers : mediasoupTypes.Producer[];
-  consumers : mediasoupTypes.Consumer[];
+  producers : Producer[];
+  consumers : Consumer[];
   socket : Socket,
+  userid : string,
+  username : string,
 }
 
 type Rooms = {
@@ -227,7 +110,13 @@ type HighLevelClients = {
 type CandidateTransport = {
   transport:mediasoup.types.WebRtcTransport
   owner : string 
+  username : string
+  email : string 
   socket_id:string
+}
+
+type CandidateTransports = {
+  [key:string]:CandidateTransport
 }
 
 type CandidateProducerTransports = {
@@ -256,64 +145,14 @@ interface CandidateConsumers {
 
 let sockets :Sockets = {} //Do Not Think I Need This 
 
-let candidate_transports:CandidateProducerTransports= {};
+let produce_transports:CandidateTransports= {};   // [ { socketId1, roomName1, transport, consumer }, ... ]
+let consume_transports:CandidateTransports = {};
 
-let peers = {}          // { socketId1: { roomName1, socket, produce_transports = [id1, id2,] }, producers = [id1, id2,] }, consumers = [id1, id2,], peerDetails }, ...}
-let produce_transports:CandidateProducerTransports= {};   // [ { socketId1, roomName1, transport, consumer }, ... ]
-let producers:Producers = {}      // [ { socketId1, roomName1, producer, }, ... ]
-let consumers = []      // [ { socketId1, roomName1, consumer, }, ... ]
-
-let consumer_transports:CandidateConsumerTransports= {};
+//let consumer_transports:CandidateConsumerTransports= {};
 
 
 const ListenIP = process.env.IP || "127.0.0.1";
 
-type TransportProduceParams = {
-  kind: MediaKind,
-  rtpParameters: RtpParameters,
-  appData: AppData,
-}
-
-
-
-
-/*const mediaCodecs:mediasoupTypes.RtpCodecCapability[] =
-[
-  {
-    kind        : "audio",
-    mimeType    : "audio/opus",
-    clockRate   : 48000,
-    channels    : 2
-  },
-  {
-    kind       : "video",
-    mimeType   : "video/H264",
-    clockRate  : 90000,
-    parameters :
-    {
-      "packetization-mode"      : 1,
-      "profile-level-id"        : "42e01f",
-      "level-asymmetry-allowed" : 1
-    }
-  }
-]*/
-
-const mediaCodecs = [
-  {
-    kind: 'audio',
-    mimeType: 'audio/opus',
-    clockRate: 48000,
-    channels: 2,
-  },
-  {
-    kind: 'video',
-    mimeType: 'video/VP8',
-    clockRate: 90000,
-    parameters: {
-      'x-google-start-bitrate': 1000,
-    },
-  },
-]
 
 setTimeout(() => {
 
@@ -326,6 +165,8 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
     rooms[room_name].clients[initiator] = {
       producers : [],
       consumers : [],
+      userid : clients[initiator].Room_name,
+      username : clients[initiator].Email,
       socket : sockets[initiator],
     }
 
@@ -349,6 +190,8 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
   newRoom.clients[initiator] = {
     producers: [],
     consumers: [],
+    userid : clients[initiator].Room_name,
+    username : clients[initiator].Email,
     socket : sockets[initiator]
   }
   
@@ -361,6 +204,24 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
 
 
 
+const LeaveRoom = (socket:Socket) => {
+
+  const roomname = clients[socket.id].Room_name
+  if (roomname != ""){
+    rooms[roomname].clients[socket.id].producers.forEach(v => {
+      socket.emit("producerleaves", {producerId:v.id})
+      v.close()
+    });
+    rooms[roomname].clients[socket.id].consumers.forEach(v => v.close());
+  }
+  clients[socket.id].Room_name = ""
+
+}
+
+
+export {
+  HighLevelClient
+}
 
 const createWorker = async () => {
     worker = await mediasoup.createWorker({
@@ -391,11 +252,24 @@ const createWorker = async () => {
 
   connections.on('connection', async socket => {
     console.log(socket.id)
-    sockets[socket.id] = socket;
-    clients[socket.id] = {
-      Room_name : "",
-      UUID : "",
+
+    const token = socket.handshake.auth.token;
+
+
+    let user :HighLevelClient
+
+    try {
+      user = await newUser(token)
+      sockets[socket.id] = socket;  //Why Do I Need This
+      clients[socket.id] = user
     }
+
+    catch(err){
+      //Unauthenticated 
+      //socket._cleanup();
+      socket.conn.close();
+    }
+
 
     socket.emit('connectionsuccess', {
       socketId: socket.id,
@@ -412,34 +286,24 @@ const createWorker = async () => {
         }
       }
 
-      return ; //Please Remove This ...
+     LeaveRoom(socket) //Closes Existing Producers and Consumers -> How DO I Remove Transports ?? 
+     
 
-     const ClientsRoom:Room = rooms[clients[socket.id].Room_name]
+      //consumer_transports[socket.id].forEach(v => v.transport.close())
+      //delete consumer_transports[socket.id]
 
-     console.log(`Room Name : ${clients[socket.id].Room_name}`)
 
-     const client = ClientsRoom.clients[socket.id];
-
-     client.consumers.forEach((cons : mediasoupTypes.Consumer) => {
-        //How Do I  Chose Connetion
-        cons.close();
-     });
-
-     delete clients.consumer;
-
-     client.producers.forEach((cons:mediasoupTypes.Producer) => {
-      cons.close();
+     clients[socket.id].Consumer_Transport_Ids.forEach(v => {
+      consume_transports[v].transport.close()
      })
 
-     delete clients.producers;
-     //This Will Delete The Entry Of the Client From THe Room To THe User
-     //Because It goes Rooms Maps to Users -> List of Producers and Consumers
-     delete ClientsRoom.clients[socket.id]
+     clients[socket.id].Producer_Transport_Ids.forEach(v => {
+      produce_transports[v].transport.close()
+     })
 
      delete clients[socket.id]
 
-     delete sockets[socket.id]
-
+      return ; //Please Remove This ...
     })
 
     
@@ -506,16 +370,29 @@ const createWorker = async () => {
           console.log(`consumer is ${transport.id}`)
 
 
-
-        if(!consumer_transports[socket.id]){
+        
+        /*if(!consumer_transports[socket.id]){
           consumer_transports[socket.id] = [];
         }
         // -> Add Candidate Transport For now --> Why Do We Need Transport Room 
         consumer_transports[socket.id].push({
           transport,
-          owner : "",
+          owner : clients[socket.id].UUID,
           socket_id : socket.id,
+          username : clients[socket.id].Username,
+          email: clients[socket.id].Email,
         })
+        */
+
+        consume_transports[transport.id] = {
+          transport,
+          owner : clients[socket.id].UUID,
+          socket_id : socket.id,
+          username : clients[socket.id].Username,
+          email: clients[socket.id].Email,
+        }
+
+        clients[socket.id].Consumer_Transport_Ids.push(transport.id)
 
         }
         else{
@@ -526,8 +403,10 @@ const createWorker = async () => {
             // -> Add Candidate Transport For now --> Why Do We Need Transport Room 
             produce_transports[socket.id] = {
               transport,
-              owner : "",
+              owner : clients[socket.id].Username,
               socket_id : socket.id,
+              email : clients[socket.id].Email,
+              username: clients[socket.id].Username,
             }
             //addTransport(transport, roomName, consumer)
           }
@@ -539,13 +418,32 @@ const createWorker = async () => {
 
 
   
-  socket.on('getProducers', (callback: (arg0: string[]) => void) => {
+  socket.on('getProducers', (callback: (arg0: ProducerResponse[]) => void) => {
     //return all producer produce_transports
     const roomName  = clients[socket.id].Room_name
 
     let clientList = rooms[roomName].clients
 
-    let ProducerList : mediasoup.types.Producer[] = [];
+    
+    let RoomProducers : ProducerResponse[] = []
+
+    for (var key in clientList){
+      const nextClient = clientList[key];
+      
+      
+      nextClient.producers.forEach((v) => RoomProducers.push({
+        producerId : v.id,
+        email: nextClient.username,
+        username: nextClient.username,
+        userid: nextClient.userid,
+      }))
+    }
+
+    callback(RoomProducers)
+
+    return 
+
+    /*let ProducerList : mediasoup.types.Producer[] = [];
 
     for (var key in clientList){
       const nextClient = clientList[key];
@@ -554,7 +452,11 @@ const createWorker = async () => {
 
     const listtoreturn = ProducerList.map(p=>p.id);
 
+    //Return Something Else Instead
+  
+
     callback(ProducerList.map(p => p.id));
+    */
 
   })
 
@@ -587,8 +489,9 @@ const createWorker = async () => {
     room.clients[socket.id].producers = [... room.clients[socket.id].producers , producer]
 
     //notifyRoom(clients[socket.id].Room_name, socket.id, producer.id);
+    var user = clients[socket.id]
 
-    socket.to(Array.from(socket.rooms)).emit("newproducer", {producerId: producer.id});
+    socket.to(Array.from(socket.rooms)).emit("newproducer", {producerId: producer.id, userid:user.UUID, email:user.Email,username:user.Username});
 
     producer.on('transportclose', () => {
       console.log('transport for this producer closed ')
@@ -619,7 +522,7 @@ const createWorker = async () => {
 
       console.log(`DTLS PARAMS: ${dtlsParameters}`)
       
-      const consumerTransports:mediasoup.types.Transport[] = consumer_transports[socket.id].map((k,i) => k.transport);
+      /*const consumerTransports:mediasoup.types.Transport[] = consumer_transports[socket.id].map((k,i) => k.transport);
 
       const transport : mediasoup.types.Transport | undefined = consumerTransports.find(value => {
         return value.id === serverConsumerTransportId
@@ -633,6 +536,14 @@ const createWorker = async () => {
       console.log("transportconnect")
       
       await transport.connect({dtlsParameters});
+      
+      if(!consumer_transports[serverConsumerTransportId]){
+        //Fails
+        return 
+      }
+      */
+
+      await consume_transports[serverConsumerTransportId].transport.connect({dtlsParameters})
 
     })
 
@@ -647,14 +558,16 @@ const createWorker = async () => {
 
         const router : mediasoup.types.Router = rooms[roomName].router
 
-        const consumerTransports:mediasoup.types.Transport[] = consumer_transports[socket.id].map((k,i) => k.transport);
+        /*const consumerTransports:mediasoup.types.Transport[] = consumer_transports[socket.id].map((k,i) => k.transport);
         
 
         const transport : mediasoup.types.Transport | undefined = consumerTransports.find(value => {
           
           return value.id === serverConsumerTransportId
         })
+        */
 
+        const transport = consume_transports[serverConsumerTransportId].transport
 
 
         if (transport == undefined){
@@ -691,11 +604,13 @@ const createWorker = async () => {
   
           consumer.on('producerclose', () => {
             console.log('producer of consumer closed')
-            socket.emit('producerclosed', { remoteProducerId })
+            socket.emit('producerclosed', { producerId: remoteProducerId })
   
             transport.close()
             consumer.close()
           })
+
+
 
           rooms[roomName].clients[socket.id].consumers.push(consumer);
 
@@ -741,23 +656,6 @@ const createWorker = async () => {
   
 })
 
-
-const addProducer = (producer:mediasoup.types.Producer, roomName:string, clientid:string) => {
-
-  const room : Room = rooms[roomName];
-
-  room.clients[clientid].producers = [...room.clients[clientid].producers, producer]
-
-}
-
-const addConsumer = (consumer:mediasoup.types.Consumer, roomName:string, clientid:string) => {
-
-  const room : Room = rooms[roomName];
-
-  room.clients[clientid].consumers = [...room.clients[clientid].consumers, consumer];
-
-  
-}
 
 /**
    * Informs About Producers In The Room 

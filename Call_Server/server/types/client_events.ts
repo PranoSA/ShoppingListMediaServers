@@ -1,4 +1,5 @@
 import { IceParameters, IceCandidate, DtlsParameters, RtpParameters, MediaKind, AppData, RtpCapabilities} from "mediasoup/node/lib/types"
+import createWebRtcTransport from '../globals/createWebRTCTransport';
 
 type joinRoom = {
     roomName : string 
@@ -24,7 +25,7 @@ interface ClientToServerEvents {
 
      */
 
-    joinRoom: (a:joinRoom, callback:(e:{rtpCapabilties:RtpCapabilities}) => void) => void;
+    joinRoom: (a:joinRoom, callback:(e:{rtpCapabilities:RtpCapabilities}) => void) => void;
 
 
     /*
@@ -132,8 +133,21 @@ type ConsumeRequestCallbackParams = {
 
 type TransportProduceCallbackParams = {
     id: string,
-    producerExist: boolean,
+    producersExist: boolean,
 }
 
 
 export default ClientToServerEvents
+
+const myFunc:(a:string) => void  = (a:string) => {
+
+}
+
+export {
+    joinRoom,
+    createWebRtcTransport,
+    createWebRtcCallbackArguments,
+    TransportProduceCallbackParams,
+    createWebRtcClient,
+    transportconnect,
+}

@@ -7,7 +7,7 @@ interface ServerToClientEvents {
         3. Producer Closed -> Get the Consumer Transport To CLose 
     */
     connectionsuccess: (a:ConnectionSuccess) => void; 
-    newproducer:(a:{producerId:string})=>void; 
+    newproducer:(a:{producerId:string, })=>void; 
     producerclosed:any 
   }
   
@@ -16,4 +16,10 @@ type ConnectionSuccess = {
     socketId : string
 }
 
+
+
 export default ServerToClientEvents
+
+export {
+    ConnectionSuccess
+}

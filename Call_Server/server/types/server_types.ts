@@ -1,6 +1,5 @@
-import { Consumer } from "mediasoup/node/lib/Consumer"
-import { Producer, } from "mediasoup/node/lib/Producer"
-import { Transport } from "mediasoup/node/lib/types"
+
+import { Transport, Router, Consumer, Producer, WebRtcTransport } from "mediasoup/node/lib/types"
 
 
 type User = {
@@ -12,6 +11,8 @@ type User = {
 type Client = {
     socket_id : string 
     user : User 
+    Room_name : string 
+    uuid : string 
 }
 
 interface Clients {
@@ -28,25 +29,52 @@ type Room = {
     groupname: string 
     all_users : User[] //Read In When You Open The Room 
     host : string  //This is So Users Know What Room A Client Is In ...
-    clients : MediaUser[],
+    clients : {
+        [key:string]:MediaUser
+    },
+    router: Router
 }
 
 type Rooms = {
     [key:string]:Room //Room Name
 }
 
+type CandidateTransport = {
+    transport:WebRtcTransport
+    owner : string 
+    socket_id:string
+  }
+
+
+type CandidateTransports  = {
+    [key:string]:CandidateTransport[]
+}
+
+
 
 interface ProducerTransports {
-    [key:string] : Transport
+    [key:string] : CandidateTransports
 }
 
 interface ConsumerTransports {
-    [key:string] : Transport
+    [key:string] : CandidateTransports
 }
 
 export type {
     Room,
     Rooms ,
     ConsumerTransports,
-    ProducerTransports
+    ProducerTransports,
+    Clients,
+    CandidateTransports
 }
+
+
+  
+  type CandidateProducerTransports = {
+    [key:string]:CandidateTransport 
+  }
+  
+  type CandidateConsumerTransports = {
+    [key:string]:CandidateTransport[]
+  }

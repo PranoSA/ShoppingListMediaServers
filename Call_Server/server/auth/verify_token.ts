@@ -1,23 +1,19 @@
-import jose, { jwtDecrypt } from 'jose'
+import { jwtDecrypt, createRemoteJWKSet, JWTPayload, jwtVerify} from 'jose'
 
-const JWKS = jose.createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
+import Config from '../config/server_config'
 
-var Config : JWTConfig
-
-type JWTConfig = {
-    url:string 
-    issuer:string //"" if does Not Matter
-    expires:string //How Long To Give Leeway ...
-    audience:string 
-}
+const JWKS = createRemoteJWKSet(new URL(Config.JWK_Config.jwks_url))
 
 
-async function VerifyToken(token:string){
-    const { payload, protectedHeader } = await jose.jwtVerify(token, JWKS, {
-        issuer: Config.issuer,
-        audience: Config.audience,
+
+async function VerifyToken(token:string):Promise<JWTPayload>{
+    const { payload, protectedHeader } = await jwtVerify(token, JWKS, {
+        issuer: Config.JWK_Config.issuer,
+        audience: Config.JWK_Config.audience,
     })
+
+    return payload 
 }
 
 
-
+export default VerifyToken
