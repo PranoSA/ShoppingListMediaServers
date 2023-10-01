@@ -1,6 +1,6 @@
 import { jwtDecrypt, createRemoteJWKSet, JWTPayload, jwtVerify} from 'jose'
 
-import Config from '../config/server_config'
+import Config from '../config/server_config.js'
 
 const JWKS = createRemoteJWKSet(new URL(Config.JWK_Config.jwks_url))
 

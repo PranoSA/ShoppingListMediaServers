@@ -99,7 +99,8 @@ interface ClientToServerEvents {
           id: string
           iceParameters: IceParameters
           iceCandidates: IceCandidate[]
-          dtlsParameters: DtlsParameters 
+          dtlsParameters: DtlsParameters,
+          error?: string  
       }
     }
   

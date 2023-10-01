@@ -11,7 +11,7 @@ And Room and Users
 */
 
 import { Worker, MediaKind } from 'mediasoup/node/lib/types';
-import { Clients, ConsumerTransports, ProducerTransports, Rooms, CandidateTransports } from "../types/server_types";
+import { Clients,  Rooms, CandidateTransports } from "../types/application_types.js";
 import mediasoup from 'mediasoup'
 
 const ProducerTransports : CandidateTransports = {}
@@ -42,6 +42,8 @@ const createWorker = async () => {
   
     return worker
 }
+
+
 
 const kind_audio : MediaKind = 'audio'
 const kind_video : MediaKind = 'video'

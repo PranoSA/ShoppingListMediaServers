@@ -3,7 +3,6 @@
 import express, {Request, Response, NextFunction} from 'express'
 const app = express()
 
-import mediaCodecs from './globals/media_codecs';
 
 
 import https from 'httpolyglot'
@@ -15,16 +14,19 @@ import mediasoup from 'mediasoup'
 //import { types as mediasoupTypes } from "mediasoup";
 
 
-import {  RtpParameters, AppData, DtlsParameters, IceParameters,MediaKind, IceCandidate, Producer, Consumer, Worker, Router } from 'mediasoup/node/lib/types'
+import {  RtpParameters, AppData, DtlsParameters, IceParameters,MediaKind, IceCandidate, Producer, Consumer, Worker, Router } from 'mediasoup/node/lib/types.js'
 
-import { joinRoom, ProducerResponse, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents} from './types/client_to_server_events';
+import { joinRoom, ProducerResponse, createWebRtcCallbackArguments, TransportProduceCallbackParams, createWebRtcClient, transportconnect, ClientToServerEvents} from './types/client_to_server_events.js';
 
-import {ServerToClientEvents, ConnectionSuccess} from './types/server_to_client_events';
+import {ServerToClientEvents, ConnectionSuccess} from './types/server_to_client_events.js';
 
-import { HighLevelClient, HighLevelClients, LowerLevelClient, Room, Clients, Rooms, Sockets, CandidateTransport, CandidateTransports } from './types/application_types';
+import { HighLevelClient, HighLevelClients, LowerLevelClient, Room, Clients, Rooms, Sockets, CandidateTransport, CandidateTransports } from './types/application_types.js';
 
 
-import newUser from './globals/new_user';
+import mediaCodecs from './globals/media_codecs.js';
+
+import newUser from './globals/new_user.js';
+import { BelongsToGroupDB } from './auth/belongs_to_group.js';
 
 
 
@@ -79,6 +81,8 @@ let consume_transports:CandidateTransports = {};
 
 const ListenIP = process.env.IP || "127.0.0.1";
 
+console.log(ListenIP)
+
 
 setTimeout(() => {
 
@@ -132,10 +136,14 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
 
 const LeaveRoom = (socket:Socket) => {
 
+  if(!clients[socket.id]){
+    return 
+  }
+
   const roomname = clients[socket.id].Room_name
   if (roomname != ""){
     rooms[roomname].clients[socket.id].producers.forEach(v => {
-      socket.emit("producerleaves", {producerId:v.id})
+      socket.to(Array.from(socket.rooms)).emit("producerleaves", {producerId:v.id})
       v.close()
     });
     rooms[roomname].clients[socket.id].consumers.forEach(v => v.close());
@@ -152,7 +160,8 @@ export {
 const createWorker = async () => {
     worker = await mediasoup.createWorker({
       rtcMinPort: 2000,
-      rtcMaxPort: 2020,
+      rtcMaxPort: 2820,
+      logTags:["rtp", "rtcp", "dtls","ice","message","info","bwe"]
     })
   
     worker.on('died', error => {
@@ -181,11 +190,13 @@ const createWorker = async () => {
 
     const token = socket.handshake.auth.token;
 
+    console.log(token);
 
     let user :HighLevelClient
 
     try {
       user = await newUser(token)
+      console.log(user)
       sockets[socket.id] = socket;  //Why Do I Need This
       clients[socket.id] = user
     }
@@ -193,6 +204,7 @@ const createWorker = async () => {
     catch(err){
       //Unauthenticated 
       //socket._cleanup();
+      console.log("Unauthenticated Client")
       socket.conn.close();
     }
 
@@ -204,6 +216,10 @@ const createWorker = async () => {
     socket.on('disconnect', () => {
       // do some cleanup
       console.log('peer disconnected')
+
+      if(!clients[socket.id]){
+        return 
+      }
 
       if(clients[socket.id]){
         if(clients[socket.id].Room_name||"" != ""){
@@ -241,6 +257,14 @@ const createWorker = async () => {
     
 
     const router1 = await createRoom(roomName, socket.id)
+
+    const allowed = BelongsToGroupDB(clients[socket.id].UUID, roomName)
+
+    if(!allowed){
+      socket._cleanup();
+      socket.conn.close();
+      return 
+    }
 
     clients[socket.id].Room_name = roomName;
 
@@ -469,7 +493,13 @@ const createWorker = async () => {
       }
       */
 
-      await consume_transports[serverConsumerTransportId].transport.connect({dtlsParameters})
+      try {
+
+        await consume_transports[serverConsumerTransportId].transport.connect({dtlsParameters})
+      }
+      catch(e){
+        console.log("Failed TO Consume")
+      }
 
     })
 
@@ -522,6 +552,10 @@ const createWorker = async () => {
           consumer.on("rtp",()=>{
             console.log("IDK,RTP")
           })
+          
+          consumer.on('@close', () => {
+            console.log("Close , Client???")
+          })
 
 
           consumer.on('transportclose', () => {
@@ -541,7 +575,7 @@ const createWorker = async () => {
           rooms[roomName].clients[socket.id].consumers.push(consumer);
 
         
-          // from the consumer extract the following params
+          // from the consumer extract     the following params
           // to send back to the Client
           const params = {
             id: consumer.id,
@@ -570,11 +604,18 @@ const createWorker = async () => {
     socket.on('consumerresume', async ({ serverConsumerId }) => {
       console.log('consumer resume')
 
+      console.log(serverConsumerId)
       //rooms[clients[socket.id].Room_name].router.canConsume()
       
       rooms[clients[socket.id].Room_name].clients[socket.id].consumers.find((v, i) => {
+        if(v.id === serverConsumerId)
+        {
+          console.log("FoudnConsumer !!!")
+        }
         return v.id === serverConsumerId;
       })?.resume()
+
+
       .catch(err => console.log("Some SOrt OF Error"));
     })
 
@@ -590,8 +631,8 @@ const createWebRtcTransport = async (router:mediasoup.types.Router):Promise<medi
       const webRtcTransport_options = {
         listenIps: [
           {
-            ip: ListenIP, // replace with relevant IP address
-            announcedIp: ListenIP,
+            ip: "0.0.0.0", // replace with relevant IP address
+            announcedIp: "172.26.231.253",
           }
         ],
         enableUdp: true,
@@ -612,6 +653,8 @@ const createWebRtcTransport = async (router:mediasoup.types.Router):Promise<medi
       transport.on('@close', () => {
         console.log('transport closed')
       })
+
+
 
       resolve(transport)
 

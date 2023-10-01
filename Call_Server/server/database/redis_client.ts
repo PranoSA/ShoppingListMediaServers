@@ -1,4 +1,4 @@
-import Redis_Config from "../config/redis_config";
+import Redis_Config from "../config/redis_config.js";
 
 import redis from 'redis';
 
@@ -11,6 +11,6 @@ const client = redis.createClient({
     url: `redis://${Config.user}:${Config.password}@${Config.host}:${Config.port}`
 })
 
-await client.connect();
+//await client.connect();
 
 export default client 

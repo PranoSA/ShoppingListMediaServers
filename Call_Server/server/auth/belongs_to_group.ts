@@ -1,6 +1,5 @@
-import cassandra_client from '../database/cassandra_client'
-import client from '../database/cassandra_client'
-import VerifyToken from './verify_token'
+import cassandra_client from '../database/cassandra_client.js'
+import VerifyToken from './verify_token.js'
 import {JWTPayload} from 'jose'
 
 

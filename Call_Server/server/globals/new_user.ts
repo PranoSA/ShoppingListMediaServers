@@ -1,5 +1,5 @@
 import { HighLevelClient } from "..";
-import VerifyToken from '../auth/verify_token';
+import VerifyToken from '../auth/verify_token.js';
 
 
 async function newUser(params:string):Promise<HighLevelClient> {

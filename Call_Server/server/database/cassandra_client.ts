@@ -1,7 +1,7 @@
 
 import { Client as CassandraClient, types as CassandraTypes } from 'cassandra-driver'
 
-import Config from '../config/cassandra_config'
+import Config from '../config/cassandra_config.js'
 //http://localhost:9042
 
 const Environment = process.env.ENV || "DEVELOPEMENT"

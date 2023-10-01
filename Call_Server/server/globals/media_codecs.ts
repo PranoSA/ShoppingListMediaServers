@@ -1,4 +1,6 @@
-const mediaCodecs = [
+import { Producer } from "mediasoup/node/lib/Producer"
+
+/*const mediaCodecs = [
   {
     kind: 'audio',
     mimeType: 'audio/opus',
@@ -24,6 +26,23 @@ const mediaCodecs = [
       "level-asymmetry-allowed" : 1
     }
   }
+]*/
+
+const mediaCodecs = [
+  {
+    kind: 'audio',
+    mimeType: 'audio/opus',
+    clockRate: 48000,
+    channels: 2,
+  },
+  {
+    kind: 'video',
+    mimeType: 'video/VP8',
+    clockRate: 90000,
+    parameters: {
+      'x-google-start-bitrate': 1000,
+    },
+  },
 ]
 
 export default mediaCodecs
