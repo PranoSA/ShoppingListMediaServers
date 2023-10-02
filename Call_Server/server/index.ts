@@ -95,9 +95,10 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
     rooms[room_name].clients[initiator] = {
       producers : [],
       consumers : [],
-      userid : clients[initiator].Room_name,
-      username : clients[initiator].Email,
+      userid : clients[initiator].UUID,
+      username : clients[initiator].Username,
       socket : sockets[initiator],
+      producer_transport_id : "",
     }
 
     return rooms[room_name].router
@@ -120,9 +121,10 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
   newRoom.clients[initiator] = {
     producers: [],
     consumers: [],
-    userid : clients[initiator].Room_name,
-    username : clients[initiator].Email,
-    socket : sockets[initiator]
+    userid : clients[initiator].UUID,
+    username : clients[initiator].Username,
+    socket : sockets[initiator],
+    producer_transport_id : "",
   }
   
 
@@ -136,6 +138,8 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
 
 const LeaveRoom = (socket:Socket) => {
 
+  console.log("Producer Leaving $$$$$")
+
   if(!clients[socket.id]){
     return 
   }
@@ -143,11 +147,14 @@ const LeaveRoom = (socket:Socket) => {
   const roomname = clients[socket.id].Room_name
   if (roomname != ""){
     rooms[roomname].clients[socket.id].producers.forEach(v => {
-      socket.to(Array.from(socket.rooms)).emit("producerleaves", {producerId:v.id})
+      socket.to(Array.from(socket.rooms)).except(socket.id).emit("producerleaves", {producerId:v.id})
+      console.log("Producer Leaving $$$$$")
+      socket.to(Array.from(socket.rooms)).except(socket.id).emit("producerclosed", {producerId: v.id, transportId:  produce_transports[socket.id].transport.id });
       v.close()
     });
     rooms[roomname].clients[socket.id].consumers.forEach(v => v.close());
   }
+  socket.leave(clients[socket.id].Room_name)
   clients[socket.id].Room_name = ""
 
 }
@@ -199,6 +206,9 @@ const createWorker = async () => {
       console.log(user)
       sockets[socket.id] = socket;  //Why Do I Need This
       clients[socket.id] = user
+
+      console.log("New User !!!!")
+      console.log(clients[socket.id])
     }
 
     catch(err){
@@ -221,9 +231,13 @@ const createWorker = async () => {
         return 
       }
 
+      console.log("next")
+      console.log(clients[socket.id].Room_name)
+
       if(clients[socket.id]){
-        if(clients[socket.id].Room_name||"" != ""){
+        if(clients[socket.id].Room_name == ""){
           //NO produce_transports To Clean Up
+          console.log("NO Produce, No Clean Up")
           return 
         }
       }
@@ -380,14 +394,20 @@ const createWorker = async () => {
     for (var key in clientList){
       const nextClient = clientList[key];
       
+      if(key === socket.id){
+        continue;
+      }
       
       nextClient.producers.forEach((v) => RoomProducers.push({
+        transportId : nextClient.producer_transport_id,
         producerId : v.id,
         email: nextClient.username,
         username: nextClient.username,
         userid: nextClient.userid,
       }))
     }
+
+    console.log(RoomProducers.length)
 
     callback(RoomProducers)
 
@@ -429,6 +449,8 @@ const createWorker = async () => {
     })
 
 
+
+
     console.log("Attempting Transport Produce on Transport " + producer.id);
     // add producer to the producers array
     //const { roomName } = peers[socket.id]
@@ -436,12 +458,14 @@ const createWorker = async () => {
     const room:Room = rooms[clients[socket.id].Room_name]
 
 
+    room.clients[socket.id].producer_transport_id = produce_transports[socket.id].transport.id
+
     room.clients[socket.id].producers = [... room.clients[socket.id].producers , producer]
 
     //notifyRoom(clients[socket.id].Room_name, socket.id, producer.id);
     var user = clients[socket.id]
 
-    socket.to(Array.from(socket.rooms)).emit("newproducer", {producerId: producer.id, userid:user.UUID, email:user.Email,username:user.Username});
+    socket.to(Array.from(socket.rooms)).except(socket.id).emit("newproducer", {producerId: producer.id, userid:user.UUID, email:user.Email,username:user.Username,transportid:room.clients[socket.id].producer_transport_id});
 
     producer.on('transportclose', () => {
       console.log('transport for this producer closed ')
@@ -564,7 +588,7 @@ const createWorker = async () => {
   
           consumer.on('producerclose', () => {
             console.log('producer of consumer closed')
-            socket.emit('producerclosed', { producerId: remoteProducerId })
+            socket.emit('producerclosed', { producerId: remoteProducerId, transportId:  produce_transports[socket.id].transport.id})
   
             transport.close()
             consumer.close()
@@ -575,7 +599,7 @@ const createWorker = async () => {
           rooms[roomName].clients[socket.id].consumers.push(consumer);
 
         
-          // from the consumer extract     the following params
+          // from the consumer extract     the folRRing params
           // to send back to the Client
           const params = {
             id: consumer.id,
@@ -632,7 +656,7 @@ const createWebRtcTransport = async (router:mediasoup.types.Router):Promise<medi
         listenIps: [
           {
             ip: "0.0.0.0", // replace with relevant IP address
-            announcedIp: "172.26.231.253",
+            announcedIp: "172.26.234.172",
           }
         ],
         enableUdp: true,

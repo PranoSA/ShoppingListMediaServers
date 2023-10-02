@@ -84,6 +84,7 @@ interface ClientToServerEvents {
   }
   
   type ProducerResponse = {
+    transportId : string,
     producerId : string
     userid : string 
     username : string 

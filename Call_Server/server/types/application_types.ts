@@ -10,6 +10,7 @@ type LowerLevelClient = {
     socket : Socket,
     userid : string,
     username : string,
+    producer_transport_id : string 
   }
   
   type Rooms = {
