@@ -1,6 +1,6 @@
 import { Consumer, EachMessagePayload } from 'kafkajs';
 import { Kafka, KafkaConfig } from 'kafkajs';
-
+import elasticsearch_client from './elasticsearch';
 
 
 const kafkaConfig: KafkaConfig = { brokers: ['localhost:9092'] }
@@ -11,9 +11,7 @@ const kafka = new Kafka(kafkaConfig)
 const consumer = kafka.consumer({ groupId: 'shopping-chat-app' })
 
 
-type group = {
-    
-}
+//For Entering Into Cassandra For Every Message
 
 
 async function InitGroupsKafka()
@@ -52,6 +50,12 @@ async function InitUsersKafka()
             })
         },
     })
+}
+
+type Group = {
+    name : string 
+    description : string 
+    
 }
 
 async function InitListsKafka()

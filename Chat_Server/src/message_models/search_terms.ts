@@ -43,10 +43,7 @@ const searchMessageWithoutTerms = async (groupid:String,start_time: Number, limi
 
 
 
-
     const res = await cassandra_client.execute(query, [groupid, start_time, limit], { prepare: true })
-    
-
 
     const rows = res.rows.map((i, v):components["schemas"]['Message'] => {
 

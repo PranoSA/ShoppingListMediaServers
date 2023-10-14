@@ -65,6 +65,11 @@ app.get("/messages/:chatid", router.SearchMessage)
 
 app.post("/messages/:chatid", router.GenMessage)
 
+
+import AppServer from './server'
+
+AppServer.listen
+
 app.listen(port, () =>
 {
     console.log(`Server is listening on port ${port}`);

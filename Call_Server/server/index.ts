@@ -4,8 +4,14 @@ import express, {Request, Response, NextFunction} from 'express'
 const app = express()
 
 
+//const https = require('httpolyglot')
 
-import https from 'httpolyglot'
+//@ts-ig
+//import https from 'httpolyglot'
+import https from 'http';
+
+
+//import https from 'httpolyglot'
 import fs from 'fs'
 import path from 'path'
 
@@ -45,7 +51,8 @@ app.get('*', (req:Request, res:Response, next) => {
   }
 
   
-const httpsServer = https.createServer(options, app)
+  //options
+const httpsServer = https.createServer(app)
 httpsServer.listen(3001, () => {
   console.log('listening on port: ' + 3001)
 })
@@ -91,6 +98,9 @@ setTimeout(() => {
 const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.types.Router> => {
   if(rooms[room_name]){
 
+
+    
+
     console.log(`Joining Rooms ${room_name} by ${initiator}`);
     rooms[room_name].clients[initiator] = {
       producers : [],
@@ -100,6 +110,8 @@ const createRoom = async (room_name:string, initiator:string):Promise<mediasoup.
       socket : sockets[initiator],
       producer_transport_id : "",
     }
+
+    console.log(rooms[room_name].clients[initiator])
 
     return rooms[room_name].router
 
@@ -235,7 +247,7 @@ const createWorker = async () => {
       console.log(clients[socket.id].Room_name)
 
       if(clients[socket.id]){
-        if(clients[socket.id].Room_name == ""){
+        if(clients[socket.id].Room_name === ""){
           //NO produce_transports To Clean Up
           console.log("NO Produce, No Clean Up")
           return 
@@ -268,7 +280,7 @@ const createWorker = async () => {
     // const router1 = rooms[roomName] && rooms[roomName].get('data').router || await createRoom(roomName, socket.id)
 
     console.log("Room Joininng " + roomName)
-    
+    console.log(socket.handshake.auth.token)
 
     const router1 = await createRoom(roomName, socket.id)
 
@@ -283,6 +295,8 @@ const createWorker = async () => {
     clients[socket.id].Room_name = roomName;
 
     socket.join(roomName);
+
+
 
 
 
@@ -667,6 +681,8 @@ const createWebRtcTransport = async (router:mediasoup.types.Router):Promise<medi
       // https://mediasoup.org/documentation/v3/mediasoup/api/#router-createWebRtcTransport
       let transport = await router.createWebRtcTransport(webRtcTransport_options)
       console.log(`Createing Transport ID : transport id: ${transport.id}`)
+
+      
 
       transport.on('dtlsstatechange', dtlsState => {
         if (dtlsState === 'closed') {
