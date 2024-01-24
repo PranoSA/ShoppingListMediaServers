@@ -1,0 +1,171 @@
+openapi: 3.0.0
+info:
+  title: Messages API
+  version: 1.0.0
+paths:
+  /messages/{groupid}:
+    get:
+      security:
+        - bearerAuth: []   
+      parameters:
+        - in: path
+          name: groupid
+          required: true
+          description: >
+            Group ID / Chat ID The Message Belongs To, 
+            All Searches Must Be Inside of a Group You Are Authorized To Access
+            Test:
+            ab26b3d0-f1f8-49ca-85ea-46180f8679da
+          schema:
+            type: string 
+        - in: query
+          name: limit
+          required: false
+          description: >
+            "Max Amount of Messages to Query "
+          schema:
+            type: integer
+            default: 50
+            minimum: 0
+        - in: query
+          name: terms 
+          required: false 
+          description: 
+            Optionally Add Search Terms To Query
+          schema:
+            type: array
+            items:
+              type: string 
+        - in: query
+          name: below
+          required: false
+          description: >
+            Search Above Or Below, 
+            Reccomended for loading chat to query last 25 messages (before) now, and to make API calls
+            with and without below set for cursoring around a message
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: and
+          required: false 
+          description: >
+            By Default, Term Search Or Joined on an AND query
+            Set To False, To Search on an OR query
+          schema:
+            type: boolean 
+            default: true
+        - in: query
+          name: start
+          required: false
+          description: >
+            UNIX 64 TIMESTAMP for the cursor search base, this application Does Not Support Wide Range Pagination \n
+            To Get This Value from a message you want to inspect
+          schema:
+            type: integer
+            minimum: 0
+        - in: query
+          name: ordered
+          description: >
+            Return "Best" Results
+            By Default, Search Results Will Be Ordered By Date, Rather Than Score 
+            However, if you wish to Use Time Priority Date (Search Closest To In Time)
+            The Cursor will be used as the weighing factor for results 
+            This is not good for scanning a wide range of messages
+          required: false 
+          schema: 
+            type: boolean
+            default : true 
+        - in: query
+          name: annum
+          description: >
+            Default 1 Year, Enter Number of Seconds To Divide by e, if 0,  will be ignored
+          required: false 
+          schema: 
+            default: 0
+            type: number 
+      summary: Gets Last Messages Sent In a Chat
+      responses:
+        "200":
+          description: Fetching List Of Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      security:
+        - bearerAuth: []   
+      parameters:
+        - in: path
+          name: groupid
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true 
+        content:
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/MessageRequest"
+
+      responses:
+        "200":
+          description: Fetching Sequential Messages In Group Chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /searched/messages/{groupid}:
+    get:
+      parameters:
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: Searching Messages In Group Chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http 
+      scheme: bearer
+      bearerFormat: jwt 
+  schemas:
+    Message:
+      type: object
+      properties:
+        messageid:
+          type: integer
+        groupid:
+          type: string
+        author:
+          type: string
+        content:
+          type: string
+        sent_at:
+          type: string
+        score:
+          type: number 
+      required:
+        - id
+        - groupid
+        - author
+        - content
+        - sent_at
+    MessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
